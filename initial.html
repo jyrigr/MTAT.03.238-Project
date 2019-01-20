@@ -1,0 +1,23 @@
+
+    <style>
+        table {
+            margin:1em auto;
+            display:table;
+            border: 4px solid;
+            border-collapse: collapse;
+            position: relative;
+        }
+        table tr {
+            display:table-row;
+            position: relative;
+            z-index:-1;
+        }
+        table td{
+            display:table-cell;
+            padding:8px;
+            border: 1px solid;
+            text-align: center;
+        }
+        table td:nth-child(3), table td:nth-child(6){border-right: 4px solid; } /*vertical*/
+        table tr:nth-child(3) td, table tr:nth-child(6) td{border-bottom: 4px solid;}  /*horizontal*/
+    </style><table><caption>Initial sudoku.</caption><tr><td></td><td>3</td><td></td><td>2</td><td></td><td></td><td></td><td></td><td>6</td></tr><tr><td></td><td></td><td></td><td></td><td></td><td>9</td><td></td><td></td><td>4</td></tr><tr><td>7</td><td>6</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td>5</td><td></td><td>7</td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td><td>1</td><td>8</td><td>6</td><td></td></tr><tr><td></td><td>5</td><td></td><td>4</td><td>8</td><td></td><td></td><td>9</td><td></td></tr><tr><td>8</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td>7</td><td>6</td><td></td><td></td><td></td></tr><tr><td></td><td>7</td><td>5</td><td></td><td></td><td>8</td><td>1</td><td></td><td></td></tr></table>

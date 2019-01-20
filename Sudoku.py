@@ -9,7 +9,7 @@ from IPython.display import HTML, display, Image
 tau0 = 1 / 81  # 1/d^2
 epsilon = 0.1
 
-test_sudoku = np.array([[5, 0, 0, 9, 0, 7, 4, 0, 3],
+test_sudoku2 = np.array([[5, 0, 0, 9, 0, 7, 4, 0, 3],
                        [0, 4, 0, 0, 0, 0, 6, 0, 7],
                        [8, 0, 0, 0, 0, 2, 0, 1, 0],
                        [0, 0, 8, 3, 0, 0, 0, 7, 0],
@@ -18,6 +18,16 @@ test_sudoku = np.array([[5, 0, 0, 9, 0, 7, 4, 0, 3],
                        [0, 8, 0, 2, 0, 0, 0, 0, 1],
                        [7, 0, 3, 0, 0, 0, 0, 6, 0],
                        [6, 0, 1, 7, 0, 3, 0, 0, 5]])
+
+test_sudoku = np.array([[0, 3, 0, 2, 0, 0, 0, 0, 6],
+                        [0, 0, 0, 0, 0, 9, 0, 0, 4],
+                        [7, 6, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 5, 0, 7, 0, 0],
+                        [0, 0, 0, 0, 0, 1, 8, 6, 0],
+                        [0, 5, 0, 4, 8, 0, 0, 9, 0],
+                        [8, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 7, 6, 0, 0, 0],
+                        [0, 7, 5, 0, 0, 8, 1, 0, 0]])
 
 
 # UPDATE: using ONE-HOT vectors of shape(1,10) for value_sets. First value is 1 if cell has fixed value
@@ -80,7 +90,7 @@ def find_peers(index, range):
     return peers_1D
 
 
-def constraint_propagation(sudoku):
+def constraint_propagation2(sudoku):
     c, r = sudoku.shape  # cell index, range of values for each sell
     r = r - 1  # First column refers to fixed value. IMPORTANT: if the initialize funtion is changed so that the
     # sudoku matrix stores peers, this value need to be redefined
@@ -90,7 +100,7 @@ def constraint_propagation(sudoku):
         for i in range(c):
             peers = find_peers(i, r)  # Always same output, would be okay to store in a variable. Maybe it should be
             # added in the sudoku initialization.
-            if sudoku[i][0] == 1:  # Cell value is fixed
+            if sudoku[i][0] == 1 and np.sum(sudoku[i]) == 2:  # Cell value is fixed
                 value = np.where(sudoku[i][1:1 + r] == 1)[0][0] + 1
                 for p in peers:
                     if np.sum(sudoku[p][1:1 + r]) == 0:
@@ -163,7 +173,7 @@ def check_if_solved(sudoku):
 
 
 # Modified, should be more correct
-def constraint_propagation2(sudoku):
+def constraint_propagation(sudoku):
     c, r = sudoku.shape  # cell index, range of values for each sell
     r = r - 1  # First column refers to fixed value. IMPORTANT: if the initialize funtion is changed so that the
     # sudoku matrix stores peers, this value need to be redefined
@@ -174,7 +184,7 @@ def constraint_propagation2(sudoku):
             peers = find_peers(i, r)  # Always same output, would be okay to store in a variable. Maybe it should be
             # added in the sudoku initialization.
 
-            if sudoku[i][0] == 1:  # Cell value is fixed
+            if sudoku[i][0] == 1 and np.sum(sudoku[i]) == 2:  # Cell value is fixed
                 value = np.where(sudoku[i][1:1 + r] == 1)[0][0] + 1
                 for p in peers:
                     if np.sum(sudoku[p][1:1 + r]) == 0:  # wrong solution
@@ -222,6 +232,7 @@ def generate_pheromones(cp_sudoku):
     return np.full((81, 9), tau0)*cp_sudoku[:, 1:]
 
 
+# Different local pheromone changer
 class Ant:
     def __init__(self, cp_sudoku, pheromones, start):
         self.in_sudoku = np.copy(cp_sudoku)  # for comparisson
@@ -229,6 +240,49 @@ class Ant:
         self.pheromones = np.copy(pheromones)  # matrix 81x9
         self.start = start  # integer 0...81
         self.cells, self.r = self.cp_sudoku.shape  # cells =81
+
+    def run(self):
+        # Run over all cells
+        for i in range(self.cells):
+            # if cell value not set
+            if self.cp_sudoku[self.start - i, 0] == 0 and np.sum(self.cp_sudoku[self.start - i]) != 0:
+                # Choose weighted random value
+                cell_random = roulette(self.pheromones[self.start - i], self.cp_sudoku[self.start - i])
+                old_cp_sudoku = np.copy(self.cp_sudoku)
+                # Set that value in the sudoku
+                self.cp_sudoku[self.start - i] = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                self.cp_sudoku[self.start - i, cell_random] = 1
+
+                # Run CP
+                constraint_propagation(self.cp_sudoku)
+                new_cp_sudoku = np.copy(self.cp_sudoku)
+                for j in range(len(new_cp_sudoku)):
+                    if np.sum(new_cp_sudoku[j]) == 1:
+                        new_cp_sudoku[j] = np.zeros(10)
+
+                    # Update pheromone table
+                    if old_cp_sudoku[j, 0] != new_cp_sudoku[j, 0] and np.sum(new_cp_sudoku) == 2:
+                        index = np.nonzero(new_cp_sudoku[j, 1:])[0][0]
+                        self.pheromones[self.start - i, index] = (1 - epsilon) * self.pheromones[
+                            self.start - i, index] + epsilon * tau0
+
+        for i in range(len(self.cp_sudoku)):
+            if np.sum(self.cp_sudoku[i]) == 1:
+                self.cp_sudoku[i] = np.zeros(10)
+
+        changed_cells = np.count_nonzero(self.cp_sudoku[:, 0]) - np.count_nonzero(self.in_sudoku[:, 0])
+        self.result = 81 / (81 - changed_cells)
+        return
+
+
+class Ant2:
+    def __init__(self, cp_sudoku, pheromones, start):
+        self.in_sudoku = np.copy(cp_sudoku)  # for comparisson
+        self.cp_sudoku = np.copy(cp_sudoku)  # matrix 81x10
+        self.pheromones = np.copy(pheromones)  # matrix 81x9
+        self.start = start  # integer 0...81
+        self.cells, self.r = self.cp_sudoku.shape  # cells =81
+        self.result = 1
 
     def run(self):
         # Run over all cells
@@ -302,6 +356,7 @@ def solve_sudoku(sudoku, ant_num=10, evaporation_parameter=0.9):
     gen = 0
     while not check_if_solved(sudoku):
         gen += 1
+        print(gen)
 
         ants = [Ant(sudoku, global_pheromones, int(random.random() * 81)) for i in
                 range(ant_num)]  # int(random.random()*81)
@@ -329,7 +384,13 @@ with open(path1, 'w') as f:
     f.close()
 webbrowser.open(url1)
 
-solution = solve_sudoku(test_sudoku)
+gens = []
+for i in range(10):
+    solution = solve_sudoku(np.copy(test_sudoku))
+    gens.append(solution[1])
+    print(i)
+
+print("Average:" + str(sum(gens)/len(gens)))
 
 path2 = os.path.abspath('solution.html')
 url2 = 'file://' + path2
